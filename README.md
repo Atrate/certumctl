@@ -23,7 +23,7 @@ TODO
 
 ## Original documentation
 
-[https://files.certum.eu/documents/manual_pl/Instalacja_konfiguracja_czytniki_procertumCardmanager_linux_v2.pdf](https://pomoc.certum.pl/pl/oprogramowanie/procertum-cardmanager/)
+[https://pomoc.certum.pl/pl/oprogramowanie/procertum-cardmanager/](https://pomoc.certum.pl/pl/oprogramowanie/procertum-cardmanager/)
 
 [https://files.certum.eu/documents/manual_pl/Instalacja_konfiguracja_czytniki_procertumCardmanager_linux_v2.pdf](https://files.certum.eu/documents/manual_pl/Instalacja_konfiguracja_czytniki_procertumCardmanager_linux_v2.pdf)
 
