@@ -28,6 +28,7 @@
 #   0: All good
 #   1: Unspecified
 #   2: Error in environment configuration or arguments
+#   3: Runtime requirements not satisfied
 # ----------------------------------------------------
 
 ## -----------------------------------------------------
@@ -68,6 +69,7 @@ UTILS=(
     'cat'
     'command'
     'declare'
+    'dialog'
     'echo'
     'false'
     'getopt'
@@ -115,7 +117,7 @@ set -o pipefail -eEur
 
 # Globals
 # -------
-DEBUG="false"
+DEBUG="true"
 
 # Generic error handling
 # ----------------------
@@ -226,11 +228,103 @@ check_environment()
 }
 
 
+check_certum_install()
+{
+    warn "Certum utilities are not installed correctly"
+    return 1
+
+    debug "Certum utilities are installed correctly"
+    return 0
+}
+
+
+check_certum_running()
+{
+    warn "Certum service is not running"
+    return 1
+
+    debug "Certum service is running"
+    return 0
+}
+
+# Ask whether to install certum utilities
+# ---------------------------------------
+ask_install_certum()
+{
+    dialog --yesno "Certum utilities do not seem to be installed, do you want to install them now?" 6 80
+    return $?
+}
+
+# Ask whether to start certum services
+# ------------------------------------
+ask_run_certum()
+{
+    dialog --yesno "Certum utilities do not seem to be running, do you want to start them now?" 6 80
+    return $?
+}
+
+install_certum()
+{
+    return
+}
+
+run_certum()
+{
+    return
+}
+
+main_menu()
+{
+    selection=$(dialog --cancel-label "Exit" --title "Main menu" --menu "What would you like to do today?" 0 0 0 1 "Nothing" 2 "Nothing" 3 "Nothing" 3>&1 1>&2 2>&3)
+
+    debug "Selection: $selection"
+
+    echo "$selection"
+    return 0
+}
+
 # Main program functionality
 # --------------------------
 main()
 {
     debug "$@"
+
+    # Check-ask-do logic for certum installation
+    # ------------------------------------------
+    if ! check_certum_install
+    then
+        if ask_install_certum
+        then
+            install_certum
+        else
+            err "Cannot continue without installing Certum service!"
+            exit 3
+        fi
+    fi
+
+    # Check-ask-do logic for certum service status
+    # --------------------------------------------
+    if ! check_certum_running
+    then
+        if ask_run_certum
+        then
+            run_certum
+        else
+            err "Cannot continue without certum service running!"
+            exit 3
+        fi
+    fi
+
+    # Show main menu
+    # --------------
+    case "$(main_menu)" in
+        1) true
+            ;;
+        2) true
+            ;;
+        3) true
+            ;;
+    esac
     return
 }
 
