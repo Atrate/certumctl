@@ -3,30 +3,33 @@
 
 ## Description
 
-TODO
+This is a 'simple' `bash` and `dialog`-based script to help you deal with Certum
+smartcards without having to pull your remaining hair out. So far the
+following OSes are supported:
+
+- Debian 12
 
 ## Screenshots
 
 TODO
 
-## Installation
+## Installation and usage
 
-TODO
+1. Clone/download the repository
+2. Run `bin/certumctl.sh`
 
 ## Dependencies
 
-TODO
-
-- `ncurses`
+- `dialog`
+- `wget`
+- `readlink`
+- Certum's smartcard libraries (included in `./lib`)
 
 ## [Changelog](./CHANGELOG)
 
-## Original documentation
+## Source for libraries
 
 [https://pomoc.certum.pl/pl/oprogramowanie/procertum-cardmanager/](https://pomoc.certum.pl/pl/oprogramowanie/procertum-cardmanager/)
 
-[https://files.certum.eu/documents/manual_pl/Instalacja_konfiguracja_czytniki_procertumCardmanager_linux_v2.pdf](https://files.certum.eu/documents/manual_pl/Instalacja_konfiguracja_czytniki_procertumCardmanager_linux_v2.pdf)
-
 ## License
-This project is licensed under the [GNU AGPL-3.0-or-later](https://www.gnu.org/licenses/agpl-3.0.html).
-
+This project, except the proprietary Certum libraries, is licensed under the [GNU AGPL-3.0-or-later](https://www.gnu.org/licenses/agpl-3.0.html).

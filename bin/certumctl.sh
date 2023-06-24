@@ -25,7 +25,7 @@
 # This is a 'simple' bash and dialog-based script to help you deal with Certum
 # smartcards without having to pull your remaining hair out. So far the
 # following OSes are supported:
-#   debian11
+#   Debian 12
 # --------------------
 # Exit code listing:
 #   0: All good
@@ -79,11 +79,14 @@ UTILS=(
     'hash'
     'local'
     'logger'
+    'mktemp'
     'pgrep'
     'read'
+    'readlink'
     'sudo'
     'tee'
     'true'
+    'wget'
 )
 
 # Unset all commands used in the script - prevents exported functions
@@ -118,10 +121,13 @@ set -o pipefail -eEur
 ## Make sure to populate the $UTILS array above
 ## --------------------------------------------
 
-
 # Globals
 # -------
 DEBUG="true"
+# CCTLDIR="$HOME/.local/share/certumctl"
+SCRIPTDIR=$(dirname "$(readlink -e -- "$0")")
+LIB1="$SCRIPTDIR/lib/sc30pkcs11-3.0.6.68-MS.so"
+LIB2="$SCRIPTDIR/lib/cryptoCertum3PKCS-3.0.6.65-MS.so"
 
 # Generic error handling
 # ----------------------
@@ -247,7 +253,7 @@ check_os()
                         'pcsc-tools'
                     )
                     INSTALL_CMD='sudo apt install -y'
-                    INSTALLED_PKGS="$(sudo apt list --installed)"
+                    INSTALLED_PKGS="$(sudo apt list --installed 2>&3)"
                     ;;
                 *)
                     err "Unsupported OS!"
@@ -287,7 +293,16 @@ check_environment()
         fi
     fi
     done
-    return
+
+    # # Make config dir
+    # # ---------------
+    # if ! mkdir -p "$CCTLDIR"
+    # then
+        # err "Error making directory: $CCTLDIR, cannot proceed!"
+        # return 2
+    # fi
+
+    return 0
 }
 
 
@@ -297,16 +312,30 @@ check_tools_installed()
 {
     for tool in "${TOOLS[@]}"
     do
-        if ! echo "$INSTALLED_PKGS" | grep "$tool"
+        if ! echo "$INSTALLED_PKGS" | grep -q "$tool"
         then
             warn "Smartcard utilities are not installed correctly"
             return 1
         fi
     done
 
+    debug "All smartcard packages are installed correctly"
+
+    # Check whether the libraries are available
+    # -----------------------------------------
+    if [ -r "$LIB1" ] && [ -r "$LIB2" ]
+    then
+        debug "Libraries are installed correctly"
+        debug "LIB1: $LIB1"
+        debug "LIB2: $LIB2"
+    else
+        err "Certum libraries cannot be found in $SCRIPTDIR/lib!"
+        err "Please make sure you have cloned the whole repository"
+    fi
+
     # If we've reached this point, it's all good
     # ------------------------------------------
-    debug "Smartcard utilities are installed correctly"
+    debug "All tools are installed correctly"
     return 0
 }
 
@@ -333,7 +362,7 @@ check_tools_running()
 ask_install_tools()
 {
     dialog --yesno "Smartcard utilities do not seem to be installed, do you want to install them now?" \
-           6 80
+           0 0
     return $?
 }
 
@@ -343,7 +372,7 @@ ask_install_tools()
 ask_run_tools()
 {
     dialog --yesno "Smartcard utilities do not seem to be running, do you want to start them now?" \
-           6 80
+           0 0
     return $?
 }
 
@@ -386,9 +415,14 @@ main_menu()
                        --title "Main menu" \
                        --menu "What would you like to do today?" \
                        0 0 0 \
-                       1 "Nothing" \
-                       2 "Nothing" \
-                       3 "Nothing" \
+                       1 "Show slots" \
+                       2 "Generate keypair" \
+                       3 "Log into the card" \
+                       4 "Nothing" \
+                       5 "Nothing" \
+                       6 "Nothing" \
+                       7 "Nothing" \
+                       8 "Nothing" \
                        3>&1 1>&2 2>&3 \
                 || true)
 
@@ -414,7 +448,6 @@ main()
                 err "Something went wrong while trying to install smartcard tools"
                 exit 1
             fi
-            read
         else
             err "Cannot continue without installing smartcard tools!"
             exit 3
@@ -438,26 +471,66 @@ main()
         fi
     fi
 
-    # Get readers
-    # -----------
-    # TODO
+    while : :
+        do
+        # Check whether reader is available
+        # ---------------------------------
+        if pcsc_scan -r | grep -q "No reader found."
+        then
+            dialog --no-label "Abort" \
+                   --yes-label "Retry" \
+                   --yesno "No card reader detected! Please plug one in and try again!" \
+                   0 0 \
+            || exit 0
 
-    # Show main menu
-    # --------------
-    case "$(main_menu)" in
-        1)
-            true
-            ;;
-        2)
-            true
-            ;;
-        3)
-            true
-            ;;
-        *)
-            exit 0
-            ;;
-    esac
+            continue
+        fi
+
+        # Check whether a card is available
+        # ---------------------------------
+        if ! pcsc_scan -c | grep -q "Card inserted"
+        then
+            dialog --no-label "Abort" \
+                   --yes-label "Retry" \
+                   --yesno "No card detected! Please insert one and try again!" \
+                   0 0 \
+            || exit 0
+
+            continue
+        fi
+
+        # Show main menu
+        # --------------
+        case "$(main_menu)" in
+            1)
+                true
+                ;;
+            2)
+                true
+                ;;
+            3)
+                true
+                ;;
+            4)
+                true
+                ;;
+            5)
+                true
+                ;;
+            6)
+                true
+                ;;
+            7)
+                true
+                ;;
+            8)
+                true
+                ;;
+            *)
+                exit 0
+                ;;
+        esac
+    done
     return
 }
 
