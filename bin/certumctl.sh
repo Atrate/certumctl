@@ -21,15 +21,18 @@
 # Version: 0.0.1
 # --------------
 
-# ----------------------------------------------------
-# <Script description>
+# ----------------------------------------------------------------------------
+# This is a 'simple' bash and dialog-based script to help you deal with Certum
+# smartcards without having to pull your remaining hair out. So far the
+# following OSes are supported:
+#   debian11
 # --------------------
 # Exit code listing:
 #   0: All good
 #   1: Unspecified
 #   2: Error in environment configuration or arguments
 #   3: Runtime requirements not satisfied
-# ----------------------------------------------------
+# ----------------------------------------------------------------------------
 
 ## -----------------------------------------------------
 ## SECURITY SECTION
@@ -78,6 +81,7 @@ UTILS=(
     'logger'
     'pgrep'
     'read'
+    'sudo'
     'tee'
     'true'
 )
@@ -184,16 +188,78 @@ err()
 # --------------------
 yes_or_no()
 {
-    true
-    # TODO: write as ncurses
-    # while true
-    # do
-        # read -r -p "$* [y/n]: " yn
-        # case $yn in
-            # [Yy]*) return 0  ;;
-            # [Nn]*) err "Aborted" ; return 1 ;;
-        # esac
-    # done
+    while true
+    do
+        read -r -p "$* [y/n]: " yn
+        case $yn in
+            [Yy]*) return 0  ;;
+            [Nn]*) err "Aborted" ; return 1 ;;
+        esac
+    done
+}
+
+
+# Check operating system and set variables in accordance with the supported OS
+# ----------------------------------------------------------------------------
+check_os()
+{
+    # Get the correct os-release file
+    # -------------------------------
+    if [ -r /etc/os-release ]
+    then
+        OS_RELEASE='/etc/os-release'
+    elif [ -r /usr/lib/os-release ]
+    then
+        OS_RELEASE='/usr/lib/os-release'
+    else
+        err "Failed to get OS information"
+        exit 2
+    fi
+
+    # Get OS_ID and OS_VERSIONI_ID from the os-release file
+    # -----------------------------------------------------
+    OS_ID="$(grep -Po '(?<=^ID=)[^$]+$' < "$OS_RELEASE")"
+    OS_VERSION_ID="$(grep -Po '(?<=^VERSION_ID=)[^$]+$' < "$OS_RELEASE")"
+
+    # If grep did not match a variable, set it so -u does not kill the script
+    # -----------------------------------------------------------------------
+    [ -z "$OS_ID" ] && OS_ID='unsupported'
+    [ -z "$OS_VERSION_ID" ] && OS_VERSION_ID='unsupported'
+
+    debug "$OS_ID" "$OS_VERSION_ID"
+
+    # Check OS compatibility
+    # ----------------------
+    case "$OS_ID" in
+        "debian")
+            case "$OS_VERSION_ID" in
+                '"12"')
+                    # Debian 12
+                    # ---------
+                    debug "Detected OS: Debian 12"
+                    declare -g TOOLS
+                    declare -g SMARTCARD_SERVICE
+                    declare -g INSTALL_CMD
+                    SMARTCARD_SERVICE="pcscd.service"
+                    TOOLS=(
+                        'opensc'
+                        'libengine-pkcs11-openssl'
+                        'pcsc-tools'
+                    )
+                    INSTALL_CMD='sudo apt install -y'
+                    INSTALLED_PKGS="$(sudo apt list --installed)"
+                    ;;
+                *)
+                    err "Unsupported OS!"
+                    exit 2
+                    ;;
+            esac
+            ;;
+        *)
+            err "Unsupported OS!"
+            exit 2
+            ;;
+    esac
 }
 
 
@@ -201,81 +267,130 @@ yes_or_no()
 # ----------------------------------------------
 check_environment()
 {
-    # Check whether running as root
-    # -----------------------------
-    # if (( EUID != 0 ))
-    # then
-        # err "This script must be executed as root!"
-        # exit 3
-    # fi
-
-    # Check whether script is already running
-    # ---------------------------------------
-    # if pgrep -- "$(basename "$0")" >&3
-    # then
-        # err "Another instance of the script is already running!"
-        # exit 1
-    # fi
-
     # Check available utilities
     # -------------------------
     for util in "${UTILS[@]}"
     do
-        command -v -- "$util" >&3 || { err "This script requires $util to be installed and in PATH!"; exit 2; }
+        if ! command -v -- "$util" >&3
+    then
+        err "This script requires $util to be installed and in PATH!"
+        if [ "$util" = "dialog" ]
+        then
+            if yes_or_no "Do you want to install it now?"
+            then
+                eval "$INSTALL_CMD" dialog
+            else
+                exit 2
+            fi
+        else
+            exit 2
+        fi
+    fi
     done
-
     return
 }
 
 
-check_certum_install()
+# Check whether any of the smartcard tools are missing
+# ----------------------------------------------------
+check_tools_installed()
 {
-    warn "Certum utilities are not installed correctly"
-    return 1
+    for tool in "${TOOLS[@]}"
+    do
+        if ! echo "$INSTALLED_PKGS" | grep "$tool"
+        then
+            warn "Smartcard utilities are not installed correctly"
+            return 1
+        fi
+    done
 
-    debug "Certum utilities are installed correctly"
+    # If we've reached this point, it's all good
+    # ------------------------------------------
+    debug "Smartcard utilities are installed correctly"
     return 0
 }
 
 
-check_certum_running()
+# Check whether the smartcard manager service is running
+# ------------------------------------------------------
+check_tools_running()
 {
-    warn "Certum service is not running"
-    return 1
-
-    debug "Certum service is running"
-    return 0
+    # Sysvinit is dead, long live systemd
+    # -----------------------------------
+    if sudo systemctl --no-pager status "$SMARTCARD_SERVICE" 1>&3
+    then
+        debug "Smartcard service is running"
+        return 0
+    else
+        warn "Smartcard service is not running"
+        return 1
+    fi
 }
+
 
 # Ask whether to install certum utilities
 # ---------------------------------------
-ask_install_certum()
+ask_install_tools()
 {
-    dialog --yesno "Certum utilities do not seem to be installed, do you want to install them now?" 6 80
+    dialog --yesno "Smartcard utilities do not seem to be installed, do you want to install them now?" \
+           6 80
     return $?
 }
+
 
 # Ask whether to start certum services
 # ------------------------------------
-ask_run_certum()
+ask_run_tools()
 {
-    dialog --yesno "Certum utilities do not seem to be running, do you want to start them now?" 6 80
+    dialog --yesno "Smartcard utilities do not seem to be running, do you want to start them now?" \
+           6 80
     return $?
 }
 
-install_certum()
+
+# Install the needed smartcard utility packages
+# ---------------------------------------------
+install_tools()
 {
-    return
+    # Install the required packages
+    # -----------------------------
+    if ! eval "$INSTALL_CMD" "${TOOLS[@]}"
+    then
+        return 1
+    fi
+
+    # Check whether openssl detects the pkcs11 engine
+    # -----------------------------------------------
+    openssl engine pkcs11 2>&3 || return 1
+
+    return 0
 }
 
-run_certum()
+
+# Start the smartcard management service
+# --------------------------------------
+run_tools()
 {
-    return
+    # Sysvinit is dead, long live systemd
+    # -----------------------------------
+    sudo systemctl start "$SMARTCARD_SERVICE" || return 1
+    return 0
 }
 
+
+# Display the main menu of the script
+# -----------------------------------
 main_menu()
 {
-    selection=$(dialog --cancel-label "Exit" --title "Main menu" --menu "What would you like to do today?" 0 0 0 1 "Nothing" 2 "Nothing" 3 "Nothing" 3>&1 1>&2 2>&3)
+    selection=$(dialog --cancel-label "Exit" \
+                       --title "Main menu" \
+                       --menu "What would you like to do today?" \
+                       0 0 0 \
+                       1 "Nothing" \
+                       2 "Nothing" \
+                       3 "Nothing" \
+                       3>&1 1>&2 2>&3 \
+                || true)
 
     debug "Selection: $selection"
 
@@ -283,52 +398,71 @@ main_menu()
     return 0
 }
 
+
 # Main program functionality
 # --------------------------
 main()
 {
-    debug "$@"
-
     # Check-ask-do logic for certum installation
     # ------------------------------------------
-    if ! check_certum_install
+    if ! check_tools_installed
     then
-        if ask_install_certum
+        if ask_install_tools
         then
-            install_certum
+            if ! install_tools
+            then
+                err "Something went wrong while trying to install smartcard tools"
+                exit 1
+            fi
+            read
         else
-            err "Cannot continue without installing Certum service!"
+            err "Cannot continue without installing smartcard tools!"
             exit 3
         fi
     fi
 
     # Check-ask-do logic for certum service status
     # --------------------------------------------
-    if ! check_certum_running
+    if ! check_tools_running
     then
-        if ask_run_certum
+        if ask_run_tools
         then
-            run_certum
+            if ! run_tools
+            then
+                err "Something went wrong trying to run smartcard utilities!"
+                exit 1
+            fi
         else
             err "Cannot continue without certum service running!"
             exit 3
         fi
     fi
 
+    # Get readers
+    # -----------
+    # TODO
+
     # Show main menu
     # --------------
     case "$(main_menu)" in
-        1) true
+        1)
+            true
             ;;
-        2) true
+        2)
+            true
             ;;
-        3) true
+        3)
+            true
+            ;;
+        *)
+            exit 0
             ;;
     esac
     return
 }
 
 
+check_os
 check_environment
 main "$@"
 
