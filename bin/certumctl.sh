@@ -205,6 +205,24 @@ yes_or_no()
 }
 
 
+# Declare variables for Debian 12
+# -------------------------------
+declare_debian_12()
+{
+    declare -g TOOLS
+    declare -g SMARTCARD_SERVICE
+    declare -g INSTALL_CMD
+    SMARTCARD_SERVICE="pcscd.service"
+    TOOLS=(
+        'opensc'
+        'libengine-pkcs11-openssl'
+        'pcsc-tools'
+    )
+    INSTALL_CMD='sudo apt install -y'
+    INSTALLED_PKGS="$(sudo apt list --installed 2>&3)"
+}
+
+
 # Check operating system and set variables in accordance with the supported OS
 # ----------------------------------------------------------------------------
 check_os()
@@ -240,23 +258,11 @@ check_os()
         "debian")
             case "$OS_VERSION_ID" in
                 '"12"')
-                    # Debian 12
-                    # ---------
                     debug "Detected OS: Debian 12"
-                    declare -g TOOLS
-                    declare -g SMARTCARD_SERVICE
-                    declare -g INSTALL_CMD
-                    SMARTCARD_SERVICE="pcscd.service"
-                    TOOLS=(
-                        'opensc'
-                        'libengine-pkcs11-openssl'
-                        'pcsc-tools'
-                    )
-                    INSTALL_CMD='sudo apt install -y'
-                    INSTALLED_PKGS="$(sudo apt list --installed 2>&3)"
+                    declare_debian_12
                     ;;
                 *)
-                    err "Unsupported OS!"
+                    err "Unsupported OS version!"
                     exit 2
                     ;;
             esac
