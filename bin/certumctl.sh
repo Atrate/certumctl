@@ -214,6 +214,7 @@ declare_debian_12()
     declare -g INSTALL_CMD
     SMARTCARD_SERVICE="pcscd.service"
     TOOLS=(
+        'libacsccid1'
         'opensc'
         'libengine-pkcs11-openssl'
         'pcsc-tools'
@@ -389,7 +390,7 @@ install_tools()
 {
     # Install the required packages
     # -----------------------------
-    if ! eval "$INSTALL_CMD" "${TOOLS[@]}"
+    if ! eval "$INSTALL_CMD" "${TOOLS[*]}"
     then
         return 1
     fi
