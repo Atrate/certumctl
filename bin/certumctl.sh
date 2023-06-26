@@ -238,7 +238,7 @@ check_os()
         OS_RELEASE='/usr/lib/os-release'
     else
         err "Failed to get OS information"
-        exit 2
+        exit 1
     fi
 
     # Get OS_ID and OS_VERSIONI_ID from the os-release file
@@ -319,7 +319,7 @@ check_tools_installed()
 {
     for tool in "${TOOLS[@]}"
     do
-        if ! echo "$INSTALLED_PKGS" | grep -q "$tool"
+        if ! echo "$INSTALLED_PKGS" | grep "$tool" >&3 2>&3
         then
             warn "Smartcard utilities are not installed correctly"
             return 1
@@ -425,7 +425,7 @@ main_menu()
                        1 "Show slots" \
                        2 "Generate keypair" \
                        3 "Log into the card" \
-                       4 "Nothing" \
+                       4 "List available mechanisms" \
                        5 "Nothing" \
                        6 "Nothing" \
                        7 "Nothing" \
@@ -437,6 +437,60 @@ main_menu()
 
     echo "$selection"
     return 0
+}
+
+# Get PIN from user
+# -----------------
+get_pin()
+{
+    local password
+    password=$(dialog --stdout --title "Enter PIN" --insecure \
+                      --passwordbox "Please enter your PIN:" 10 10)
+    echo "$password"
+}
+
+# List available slots
+# --------------------
+show_slots()
+{
+    pkcs11-tool --module $LIB1 --list-slots
+}
+
+# Unlock User PIN for current session
+# -----------------------------------
+card_login()
+{
+    local pin=$(get_pin)
+    pkcs11-tool --module $LIB1 --unlock-pin --pin $pin
+}
+
+# Generate keypair
+# ----------------
+generate_keypair()
+{
+    local fields=(
+        "Key type" 1 1 "rsa:2048" 1 30 40 0
+	"Label" 2 1 "" 2 30 40 0)
+    exec 3>&1
+    params=$(dialog --title "Generate keys" \
+           --form "Parameters" \
+           12 64 0 \
+	   "${fields[@]}" 2>&1 1>&3 1>&3)
+    exec 3>&-
+    if ! { read key_type; read label; } <<< ${params}; then
+        err "Arguments must be non empty"
+	exit 2
+    fi
+    
+    local pin=$(get_pin)
+    pkcs11-tool --module $LIB1 --keypair --key-type $key_type --label $label --pin $pin
+}
+
+# List key types avaiable for current token
+# -----------------------------------------
+list_key_types()
+{
+    pkcs11-tool --module $LIB1 -M
 }
 
 
@@ -510,16 +564,16 @@ main()
         # --------------
         case "$(main_menu)" in
             1)
-                true
+		list_slots
                 ;;
             2)
-                true
+		generate_keypair
                 ;;
             3)
-                true
+                card_login
                 ;;
             4)
-                true
+		list_key_types
                 ;;
             5)
                 true
@@ -540,7 +594,6 @@ main()
     done
     return
 }
-
 
 check_os
 check_environment
