@@ -430,7 +430,7 @@ main_menu()
                        6 "Nothing" \
                        7 "Nothing" \
                        8 "Nothing" \
-                       3>&1 1>&2 2>&3 \
+                       4>&1 1>&2 2>&4 \
                 || true)
 
     debug "Selection: $selection"
@@ -480,13 +480,13 @@ generate_keypair()
 
     # Display dialog
     # --------------
-    exec 3>&1
+    exec 4>&1
     params=$(dialog --title "Generate keys" \
                     --form "Parameters" \
                     12 64 0 \
                     "${fields[@]}" \
-                    2>&1 1>&3 1>&3)
-    exec 3>&-
+                    2>&1 1>&4)
+    exec 4>&-
 
     # Get parameters from dialog result
     # ---------------------------------
@@ -582,16 +582,16 @@ main()
         # --------------
         case "$(main_menu)" in
             1)
-        list_slots
+                list_slots
                 ;;
             2)
-        generate_keypair
+                generate_keypair
                 ;;
             3)
                 card_login
                 ;;
             4)
-        list_key_types
+                list_key_types
                 ;;
             5)
                 true
