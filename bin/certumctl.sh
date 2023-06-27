@@ -453,15 +453,16 @@ get_pin()
 # --------------------
 show_slots()
 {
-    pkcs11-tool --module $LIB1 --list-slots
+    pkcs11-tool --module "$LIB1" --list-slots
 }
 
 # Unlock User PIN for current session
 # -----------------------------------
 card_login()
 {
-    local pin=$(get_pin)
-    pkcs11-tool --module $LIB1 --unlock-pin --pin $pin
+    local pin
+    pin=$(get_pin)
+    pkcs11-tool --module "$LIB1" --unlock-pin --pin "$pin"
 }
 
 # Generate keypair
@@ -470,27 +471,29 @@ generate_keypair()
 {
     local fields=(
         "Key type" 1 1 "rsa:2048" 1 30 40 0
-	"Label" 2 1 "" 2 30 40 0)
+        "Label" 2 1 "" 2 30 40 0
+    )
     exec 3>&1
     params=$(dialog --title "Generate keys" \
            --form "Parameters" \
            12 64 0 \
-	   "${fields[@]}" 2>&1 1>&3 1>&3)
+       "${fields[@]}" 2>&1 1>&3 1>&3)
     exec 3>&-
-    if ! { read key_type; read label; } <<< ${params}; then
+    if ! { read -r key_type; read -r label; } <<< "${params}"; then
         err "Arguments must be non empty"
-	exit 2
+    exit 2
     fi
-    
-    local pin=$(get_pin)
-    pkcs11-tool --module $LIB1 --keypair --key-type $key_type --label $label --pin $pin
+
+    local pin
+    pin=$(get_pin)
+    pkcs11-tool --module "$LIB1" --keypair --key-type "$key_type" --label "$label" --pin "$pin"
 }
 
 # List key types avaiable for current token
 # -----------------------------------------
 list_key_types()
 {
-    pkcs11-tool --module $LIB1 -M
+    pkcs11-tool --module "$LIB1" -M
 }
 
 
@@ -564,16 +567,16 @@ main()
         # --------------
         case "$(main_menu)" in
             1)
-		list_slots
+        list_slots
                 ;;
             2)
-		generate_keypair
+        generate_keypair
                 ;;
             3)
                 card_login
                 ;;
             4)
-		list_key_types
+        list_key_types
                 ;;
             5)
                 true
