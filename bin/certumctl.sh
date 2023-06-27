@@ -224,6 +224,45 @@ declare_debian_12()
 }
 
 
+# Choose what to treat the current OS as being like
+# -------------------------------------------------
+choose_alt_os()
+{
+    local oses=(
+        'Debian 12'
+        'Ubuntu 22.10'
+        'Ubuntu 22.04'
+        'Linux Mint 21'
+    )
+
+    echo "Select the OS that most closely resembles your current OS:"
+    select os in "${oses[@]}"
+    do
+        case "$os" in
+            'Debian 12')
+                OS_ID='debian'
+                OS_VERSION_ID='"12"'
+                ;;
+            'Ubuntu 22.10')
+                OS_ID='ubuntu'
+                OS_VERSION_ID='"22.10"'
+                ;;
+            'Ubuntu 22.04')
+                OS_ID='ubuntu'
+                OS_VERSION_ID='"22.04"'
+                ;;
+            'Linux Mint 21')
+                OS_ID='linuxmint'
+                OS_VERSION_ID='"21"'
+                ;;
+
+        esac
+        break
+    done
+
+    return
+}
+
 # Check operating system and set variables in accordance with the supported OS
 # ----------------------------------------------------------------------------
 check_os()
@@ -241,66 +280,95 @@ check_os()
         exit 1
     fi
 
-    # Get OS_ID and OS_VERSIONI_ID from the os-release file
+    # Get OS_ID and OS_VERSION_ID from the os-release file
     # -----------------------------------------------------
-    OS_ID="$(grep -Po '(?<=^ID=)[^$]+$' < "$OS_RELEASE")"
-    OS_VERSION_ID="$(grep -Po '(?<=^VERSION_ID=)[^$]+$' < "$OS_RELEASE")"
+    declare -g OS_ID
+    declare -g OS_VERSION_ID
+    OS_ID="$(grep -Po '(?<=^ID=)[^$]+$' < "$OS_RELEASE" || true)"
+    OS_VERSION_ID="$(grep -Po '(?<=^VERSION_ID=)[^$]+$' < "$OS_RELEASE" || true)"
 
     # If grep did not match a variable, set it so -u does not kill the script
     # -----------------------------------------------------------------------
     [ -z "$OS_ID" ] && OS_ID='unsupported'
     [ -z "$OS_VERSION_ID" ] && OS_VERSION_ID='unsupported'
 
-    debug "$OS_ID" "$OS_VERSION_ID"
+    while : :
+    do
+        debug "$OS_ID" "$OS_VERSION_ID"
 
-    # Check OS compatibility
-    # ----------------------
-    case "$OS_ID" in
-        "debian")
-            case "$OS_VERSION_ID" in
-                '"12"')
-                    debug "Detected OS: Debian 12"
-                    declare_debian_12
-                    ;;
-                *)
-                    err "Unsupported OS version!"
+        # Check OS compatibility
+        # ----------------------
+        case "$OS_ID" in
+            "debian")
+                case "$OS_VERSION_ID" in
+                    '"12"')
+                        debug "Detected OS: Debian 12"
+                        declare_debian_12
+                        break
+                        ;;
+                    *)
+                        err "Unsupported OS version!"
+                        if yes_or_no "Do you want to proceed regardless?"
+                        then
+                            choose_alt_os
+                        else
+                            exit 2
+                        fi
+                        ;;
+                esac
+                ;;
+            "ubuntu")
+                case "$OS_VERSION_ID" in
+                    '"22.04"')
+                        debug "Detected OS: Ubuntu 22.04"
+                        declare_debian_12
+                        break
+                        ;;
+                    '"22.10"')
+                        debug "Detected OS: Ubuntu 22.10"
+                        declare_debian_12
+                        break
+                        ;;
+                    *)
+                        err "Unsupported OS version!"
+                        if yes_or_no "Do you want to proceed regardless?"
+                        then
+                            choose_alt_os
+                        else
+                            exit 2
+                        fi
+                        ;;
+                esac
+                ;;
+            "linuxmint")
+                case "$OS_VERSION_ID" in
+                    '"21"')
+                        debug "Detected OS: Linux Mint 21"
+                        declare_debian_12
+                        break
+                        ;;
+                    *)
+                        err "Unsupported OS version!"
+                        if yes_or_no "Do you want to proceed regardless?"
+                        then
+                            choose_alt_os
+                        else
+                            exit 2
+                        fi
+                        ;;
+                esac
+                ;;
+            *)
+                err "Unsupported OS!"
+                if yes_or_no "Do you want to proceed regardless?"
+                then
+                    choose_alt_os
+                else
                     exit 2
-                    ;;
-            esac
-            ;;
-        "ubuntu")
-            case "$OS_VERSION_ID" in
-                '"22.04"')
-                    debug "Detected OS: Ubuntu 22.04"
-                    declare_debian_12
-                    ;;
-                '"22.10"')
-                    debug "Detected OS: Ubuntu 22.10"
-                    declare_debian_12
-                    ;;
-                *)
-                    err "Unsupported OS version!"
-                    exit 2
-                    ;;
-            esac
-            ;;
-        "linuxmint")
-            case "$OS_VERSION_ID" in
-                '"21"')
-                    debug "Detected OS: Linux Mint 21"
-                    declare_debian_12
-                    ;;
-                *)
-                    err "Unsupported OS version!"
-                    exit 2
-                    ;;
-            esac
-            ;;
-        *)
-            err "Unsupported OS!"
-            exit 2
-            ;;
-    esac
+                fi
+                ;;
+        esac
+    done
 }
 
 
