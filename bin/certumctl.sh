@@ -444,7 +444,9 @@ main_menu()
 get_pin()
 {
     local password
-    password=$(dialog --stdout --title "Enter PIN" --insecure \
+    password=$(dialog --stdout \
+                      --title "Enter PIN" \
+                      --insecure \
                       --passwordbox "Please enter your PIN:" 10 10)
     echo "$password"
 }
@@ -475,20 +477,31 @@ generate_keypair()
         "Key type" 1 1 "rsa:2048" 1 30 40 0
         "Label" 2 1 "" 2 30 40 0
     )
+
+    # Display dialog
+    # --------------
     exec 3>&1
     params=$(dialog --title "Generate keys" \
-           --form "Parameters" \
-           12 64 0 \
-       "${fields[@]}" 2>&1 1>&3 1>&3)
+                    --form "Parameters" \
+                    12 64 0 \
+                    "${fields[@]}" \
+                    2>&1 1>&3 1>&3)
     exec 3>&-
-    if ! { read -r key_type && read -r label; } <<< "${params}"; then
+
+    # Get parameters from dialog result
+    # ---------------------------------
+    if ! { read -r key_type && read -r label; } <<< "${params}"
+    then
         err "Arguments must be non empty"
-    exit 2
+        exit 2
     fi
 
+    # Unlock card, perform keypair generation
+    # ---------------------------------------
     local pin
     pin=$(get_pin)
-    pkcs11-tool --module "$LIB1" --keypair --key-type "$key_type" --label "$label" --pin "$pin"
+    pkcs11-tool --module "$LIB1" --keypair --key-type "$key_type" \
+                --label "$label" --pin "$pin"
 }
 
 # List key types avaiable for current token
