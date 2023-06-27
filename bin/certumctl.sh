@@ -469,6 +469,8 @@ card_login()
 # ----------------
 generate_keypair()
 {
+    # Define dialog fields
+    # --------------------
     local fields=(
         "Key type" 1 1 "rsa:2048" 1 30 40 0
         "Label" 2 1 "" 2 30 40 0
@@ -479,7 +481,7 @@ generate_keypair()
            12 64 0 \
        "${fields[@]}" 2>&1 1>&3 1>&3)
     exec 3>&-
-    if ! { read -r key_type; read -r label; } <<< "${params}"; then
+    if ! { read -r key_type && read -r label; } <<< "${params}"; then
         err "Arguments must be non empty"
     exit 2
     fi
