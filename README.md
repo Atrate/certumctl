@@ -8,6 +8,7 @@ smartcards without having to pull your remaining hair out. So far the
 following OSes are supported:
 
 - Debian 12
+- Linux Mint 21
 
 ## Screenshots
 

@@ -126,8 +126,8 @@ set -o pipefail -eEur
 DEBUG="true"
 # CCTLDIR="$HOME/.local/share/certumctl"
 SCRIPTDIR=$(dirname "$(readlink -e -- "$0")")
-LIB1="$SCRIPTDIR/lib/sc30pkcs11-3.0.6.68-MS.so"
-LIB2="$SCRIPTDIR/lib/cryptoCertum3PKCS-3.0.6.65-MS.so"
+LIB1="$SCRIPTDIR/../lib/sc30pkcs11-3.0.6.68-MS.so"
+LIB2="$SCRIPTDIR/../lib/cryptoCertum3PKCS-3.0.6.65-MS.so"
 
 # Generic error handling
 # ----------------------
@@ -268,6 +268,18 @@ check_os()
                     ;;
             esac
             ;;
+        "linuxmint")
+            case "$OS_VERSION_ID" in
+                '"21"')
+                    debug "Detected OS: Linux Mint 21"
+                    declare_debian_12
+                    ;;
+                *)
+                    err "Unsupported OS version!"
+                    exit 2
+                    ;;
+            esac
+            ;;
         *)
             err "Unsupported OS!"
             exit 2
@@ -336,8 +348,15 @@ check_tools_installed()
         debug "LIB1: $LIB1"
         debug "LIB2: $LIB2"
     else
-        err "Certum libraries cannot be found in $SCRIPTDIR/lib!"
+        err "Certum libraries cannot be found in $SCRIPTDIR/lib"
         err "Please make sure you have cloned the whole repository"
+
+        dialog --msgbox \
+            "Certum libraries were not found in $SCRIPTDIR/../lib.\
+            Make sure you have cloned the whole repository." \
+            0 0
+
+        exit 2
     fi
 
     # If we've reached this point, it's all good
@@ -447,7 +466,8 @@ get_pin()
     password=$(dialog --stdout \
                       --title "Enter PIN" \
                       --insecure \
-                      --passwordbox "Please enter your PIN:" 10 10)
+                      --passwordbox "Please enter your PIN:" 10 10 \
+              || return 1)
     echo "$password"
 }
 
@@ -463,7 +483,12 @@ show_slots()
 card_login()
 {
     local pin
-    pin=$(get_pin)
+    # Exit to main menu if pin was not provided
+    # -----------------------------------------
+    if ! pin=$(get_pin)
+    then
+        return 0
+    fi
     pkcs11-tool --module "$LIB1" --unlock-pin --pin "$pin"
 }
 
@@ -485,21 +510,30 @@ generate_keypair()
                     --form "Parameters" \
                     12 64 0 \
                     "${fields[@]}" \
-                    2>&1 1>&4)
+                    2>&1 1>&4 || true)
     exec 4>&-
 
-    # Get parameters from dialog result
-    # ---------------------------------
+    # Get parameters from dialog result, exit to main menu on empty
+    # -------------------------------------------------------------
     if ! { read -r key_type && read -r label; } <<< "${params}"
     then
-        err "Arguments must be non empty"
-        exit 2
+        err "Arguments must be non-empty!"
+        dialog --msgbox "Arguments must be non-empty!" \
+               0 0
+        return 0
+    fi
+
+    local pin
+    # Exit to main menu if pin was not provided
+    # -----------------------------------------
+    if ! pin=$(get_pin)
+    then
+        return 0
     fi
 
     # Unlock card, perform keypair generation
     # ---------------------------------------
-    local pin
-    pin=$(get_pin)
+
     pkcs11-tool --module "$LIB1" --keypair --key-type "$key_type" \
                 --label "$label" --pin "$pin"
 }
@@ -508,7 +542,12 @@ generate_keypair()
 # -----------------------------------------
 list_key_types()
 {
-    pkcs11-tool --module "$LIB1" -M
+    dialog --title "Available key types" \
+           --msgbox "$(pkcs11-tool --module "$LIB1" -M)" \
+           0 0 \
+    || true
+
+    return
 }
 
 
