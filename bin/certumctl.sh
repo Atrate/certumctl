@@ -268,6 +268,22 @@ check_os()
                     ;;
             esac
             ;;
+        "ubuntu")
+            case "$OS_VERSION_ID" in
+                '"22.04"')
+                    debug "Detected OS: Ubuntu 22.04"
+                    declare_debian_12
+                    ;;
+                '"22.10"')
+                    debug "Detected OS: Ubuntu 22.10"
+                    declare_debian_12
+                    ;;
+                *)
+                    err "Unsupported OS version!"
+                    exit 2
+                    ;;
+            esac
+            ;;
         "linuxmint")
             case "$OS_VERSION_ID" in
                 '"21"')

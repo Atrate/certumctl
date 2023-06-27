@@ -9,6 +9,8 @@ following OSes are supported:
 
 - Debian 12
 - Linux Mint 21
+- Ubuntu 22.10
+- Ubuntu 22.04
 
 ## Screenshots
 
