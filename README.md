@@ -12,6 +12,14 @@ following OSes are supported:
 - Ubuntu 22.10
 - Ubuntu 22.04
 
+## Features
+
+- Automatic installation of required libraries on supported OSes
+- Automatic starting of required services on supported OSes
+- Listing available slots on a card
+- Listing key types available for a card
+- Generating a keypair and storing it on a card
+
 ## Screenshots
 
 TODO
@@ -35,4 +43,5 @@ TODO
 [https://pomoc.certum.pl/pl/oprogramowanie/procertum-cardmanager/](https://pomoc.certum.pl/pl/oprogramowanie/procertum-cardmanager/)
 
 ## License
+
 This project, except the proprietary Certum libraries, is licensed under the [GNU AGPL-3.0-or-later](https://www.gnu.org/licenses/agpl-3.0.html).

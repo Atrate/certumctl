@@ -18,7 +18,7 @@
 # ---------------------------------------------------------------------
 
 # --------------
-# Version: 0.0.1
+# Version: 1.0.0
 # --------------
 
 # ----------------------------------------------------------------------------
@@ -123,8 +123,7 @@ set -o pipefail -eEur
 
 # Globals
 # -------
-DEBUG="true"
-# CCTLDIR="$HOME/.local/share/certumctl"
+DEBUG="false"
 SCRIPTDIR=$(dirname "$(readlink -e -- "$0")")
 LIB1="$SCRIPTDIR/../lib/sc30pkcs11-3.0.6.68-MS.so"
 LIB2="$SCRIPTDIR/../lib/cryptoCertum3PKCS-3.0.6.65-MS.so"
@@ -397,14 +396,6 @@ check_environment()
     fi
     done
 
-    # # Make config dir
-    # # ---------------
-    # if ! mkdir -p "$CCTLDIR"
-    # then
-        # err "Error making directory: $CCTLDIR, cannot proceed!"
-        # return 2
-    # fi
-
     return 0
 }
 
@@ -526,13 +517,8 @@ main_menu()
                        --menu "What would you like to do today?" \
                        0 0 0 \
                        1 "Show slots" \
-                       2 "Generate keypair" \
-                       3 "Log into the card" \
-                       4 "List available mechanisms" \
-                       5 "Nothing" \
-                       6 "Nothing" \
-                       7 "Nothing" \
-                       8 "Nothing" \
+                       2 "List available mechanisms" \
+                       3 "Generate keypair" \
                        4>&1 1>&2 2>&4 \
                 || true)
 
@@ -541,6 +527,7 @@ main_menu()
     echo "$selection"
     return 0
 }
+
 
 # Get PIN from user
 # -----------------
@@ -555,6 +542,7 @@ get_pin()
     echo "$password"
 }
 
+
 # List available slots
 # --------------------
 list_slots()
@@ -562,7 +550,6 @@ list_slots()
     pkcs11-tool --module "$LIB1" --list-slots
 }
 
-# 
 
 # Unlock User PIN for current session
 # -----------------------------------
@@ -577,6 +564,7 @@ card_login()
     fi
     pkcs11-tool --module "$LIB1" --unlock-pin --pin "$pin"
 }
+
 
 # Generate keypair
 # ----------------
@@ -623,6 +611,7 @@ generate_keypair()
     pkcs11-tool --module "$LIB1" --keypair --key-type "$key_type" \
                 --label "$label" --pin "$pin"
 }
+
 
 # List key types avaiable for current token
 # -----------------------------------------
@@ -710,25 +699,10 @@ main()
                 list_slots
                 ;;
             2)
-                generate_keypair
-                ;;
-            3)
-                card_login
-                ;;
-            4)
                 list_key_types
                 ;;
-            5)
-                true
-                ;;
-            6)
-                true
-                ;;
-            7)
-                true
-                ;;
-            8)
-                true
+            3)
+                generate_keypair
                 ;;
             *)
                 exit 0
