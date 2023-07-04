@@ -36,7 +36,7 @@ TODO
 - `readlink`
 - Certum's smartcard libraries (included in `./lib`)
 
-## [Changelog](./CHANGELOG)
+## [Changelog](./CHANGELOG.md)
 
 ## Source for libraries
 
