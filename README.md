@@ -20,20 +20,6 @@ following OSes are supported:
 - Listing key types available for a card
 - Generating a keypair and storing it on a card
 
-## Screenshots
-
-![Main menu](img/image2.png)
-
-![Starting smartcard utils](img/image0.png)
-
-![Listing of available key types](img/image3.png)
-
-![Generating keys](img/image4.png)
-
-![Entering PIN for operations](img/image5.png)
-
-TODO
-
 ## Installation and usage
 
 1. Clone/download the repository
@@ -47,6 +33,20 @@ TODO
 - Certum's smartcard libraries (included in `./lib`)
 
 ## [Changelog](./CHANGELOG.md)
+
+## Screenshots
+
+![Main menu](img/image2.png)
+
+![Listing of slots](img/image1.png)
+
+![Listing of available key types](img/image3.png)
+
+![Generating keys](img/image4.png)
+
+![Entering PIN for operations](img/image5.png)
+
+![Starting smartcard utils](img/image0.png)
 
 ## Source for libraries
 
