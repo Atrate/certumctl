@@ -612,9 +612,13 @@ generate_keypair()
 
     # Unlock card, perform keypair generation
     # ---------------------------------------
-
-    pkcs11-tool --module "$LIB1" --keypair --key-type "$key_type" \
-                --label "$label" --pin "$pin"
+    if pkcs11-tool --module "$LIB1" --keypair --key-type "$key_type" \
+                   --label "$label" --pin "$pin" 2>&1 | grep 'CKR_DEVICE_MEMORY'
+    then
+        err "Card memory full! Please delete something from a slot to free up memory!"
+    else
+        return
+    fi
 }
 
 
