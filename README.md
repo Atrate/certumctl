@@ -22,6 +22,16 @@ following OSes are supported:
 
 ## Screenshots
 
+![Main menu](img/image2.png)
+
+![Starting smartcard utils](img/image0.png)
+
+![Listing of available key types](img/image3.png)
+
+![Generating keys](img/image4.png)
+
+![Entering PIN for operations](img/image5.png)
+
 TODO
 
 ## Installation and usage
