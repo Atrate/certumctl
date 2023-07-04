@@ -557,10 +557,12 @@ get_pin()
 
 # List available slots
 # --------------------
-show_slots()
+list_slots()
 {
     pkcs11-tool --module "$LIB1" --list-slots
 }
+
+# 
 
 # Unlock User PIN for current session
 # -----------------------------------
