@@ -547,7 +547,12 @@ get_pin()
 # --------------------
 list_slots()
 {
-    pkcs11-tool --module "$LIB1" --list-slots
+    dialog --title "Available key types" \
+           --msgbox "$(pkcs11-tool --module "$LIB1" --list-slots)" \
+           0 0 \
+    || true
+
+    return
 }
 
 
