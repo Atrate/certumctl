@@ -21,18 +21,17 @@
 # Version: 1.0.0
 # --------------
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # This is a 'simple' bash and dialog-based script to help you deal with Certum
-# smartcards without having to pull your remaining hair out. So far the
-# following OSes are supported:
-#   Debian 12
+# smartcards without having to pull your remaining hair out. Refer to the README
+# for the supported OSes.
 # --------------------
 # Exit code listing:
 #   0: All good
 #   1: Unspecified
 #   2: Error in environment configuration or arguments
 #   3: Runtime requirements not satisfied
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 ## -----------------------------------------------------
 ## SECURITY SECTION
