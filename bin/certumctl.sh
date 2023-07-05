@@ -69,6 +69,7 @@ export IFS
 UTILS=(
     '['
     '[['
+    'awk'
     'cat'
     'command'
     'declare'
@@ -123,7 +124,7 @@ set -o pipefail -eEur
 
 # Globals
 # -------
-DEBUG="false"
+DEBUG=${DEBUG:-"false"}
 SCRIPTDIR=$(dirname "$(readlink -e -- "$0")")
 LIB1="$SCRIPTDIR/../lib/sc30pkcs11-3.0.6.68-MS.so"
 LIB2="$SCRIPTDIR/../lib/cryptoCertum3PKCS-3.0.6.65-MS.so"
@@ -606,16 +607,16 @@ delete_all_objects()
 
     # Delete all objects matching the given labels
     # --------------------------------------------
-    set +eE
     for label in "${labels[@]}"
     do
+        label=$(echo "$label" | awk '{$1=$1;print}')
         for type in cert data privkey pubkey secrkey
         do
-           pkcs11-tool --delete-object --label="$label" \
-                       --pin="$pin" --type="$type" 2>&3
+           pkcs11-tool --delete-object --label="$label" --module="$LIB1" \
+                       --pin="$pin" --type="$type" >&3 2>&3 \
+           || true
         done
     done
-    set -eE
 
     dialog --msgbox "Operation completed successfully!" \
            0 0
@@ -664,18 +665,27 @@ generate_keypair()
 
     # Unlock card, perform keypair generation
     # ---------------------------------------
-    if pkcs11-tool --module "$LIB1" --keypair --key-type "$key_type" \
-                   --label "$label" --pin "$pin" 2>&1 | grep 'CKR_DEVICE_MEMORY'
+    local output
+    if ! output="$(pkcs11-tool --module "$LIB1" --keypair --key-type "$key_type" \
+                 --label "$label" --pin "$pin" 2>&1)"
     then
-        err "Card memory full! Please delete something from a slot to free up memory!"
-        dialog --msgbox "Card memory full! Please delete something from a slot to free up memory!" \
-               0 0
-        return 0
+        # Handle "out of space" errors
+        # ----------------------------
+        if echo "$output" | grep 'CKR_DEVICE_MEMORY'
+        then
+            err "Card memory full! Please delete something from a slot to free up memory!"
+            dialog --msgbox "Card memory full! Please delete something from a slot to free up memory!" \
+                   0 0
+        else
+            err "Unexpected error occured: $output"
+            dialog --msgbox "Unexpected error occured: $output" \
+                   0 0
+        fi
     else
         dialog --msgbox "Operation completed successfully!" \
                0 0
-        return 0
     fi
+    return 0
 }
 
 
