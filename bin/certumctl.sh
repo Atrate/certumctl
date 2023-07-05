@@ -519,6 +519,7 @@ main_menu()
                        1 "Show slots" \
                        2 "List available mechanisms" \
                        3 "Generate keypair" \
+                       0 "Delete ALL objects from card" \
                        4>&1 1>&2 2>&4 \
                 || true)
 
@@ -568,6 +569,57 @@ card_login()
         return 0
     fi
     pkcs11-tool --module "$LIB1" --unlock-pin --pin "$pin"
+
+    dialog --msgbox "Operation completed successfully!" \
+           0 0
+}
+
+
+# Delete all keys and other objects from card
+# -------------------------------------------
+delete_all_objects()
+{
+    # PlEasE tYpE "IAMsuReWhatIAMdoIng" to COnfIrm
+    # --------------------------------------------
+    dialog --no-label "No" \
+           --yes-label "Yes" \
+           --default-button "no" \
+           --yesno "Are you sure you want to continue? This will delete ALL objects (keys, certificates) on the card" \
+           0 0 \
+    || return 0
+
+
+    local pin
+    # Exit to main menu if pin was not provided
+    # -----------------------------------------
+    if ! pin=$(get_pin)
+    then
+        return 0
+    fi
+
+    declare -a labels
+    readarray -t labels < <(pkcs11-tool --module "$LIB1" --list-objects \
+                            --pin "$pin" \
+                            | grep -E '^\s+label:\s+.+$' \
+                            | awk '{for(i=2;i<=NF;++i)printf $i""FS ; print ""}')
+
+
+    # Delete all objects matching the given labels
+    # --------------------------------------------
+    set +eE
+    for label in "${labels[@]}"
+    do
+        for type in cert data privkey pubkey secrkey
+        do
+           pkcs11-tool --delete-object --label="$label" \
+                       --pin="$pin" --type="$type" 2>&3
+        done
+    done
+    set -eE
+
+    dialog --msgbox "Operation completed successfully!" \
+           0 0
+    return 0
 }
 
 
@@ -620,6 +672,8 @@ generate_keypair()
                0 0
         return 0
     else
+        dialog --msgbox "Operation completed successfully!" \
+               0 0
         return 0
     fi
 }
@@ -715,6 +769,9 @@ main()
                 ;;
             3)
                 generate_keypair
+                ;;
+            0)
+                delete_all_objects
                 ;;
             *)
                 exit 0
