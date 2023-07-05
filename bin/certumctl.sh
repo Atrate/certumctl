@@ -598,6 +598,8 @@ delete_all_objects()
         return 0
     fi
 
+    # Read labels of all objects to be deleted
+    # ----------------------------------------
     declare -a labels
     readarray -t labels < <(pkcs11-tool --module "$LIB1" --list-objects \
                             --pin "$pin" \
@@ -605,11 +607,26 @@ delete_all_objects()
                             | awk '{for(i=2;i<=NF;++i)printf $i""FS ; print ""}')
 
 
+    local progress
+    progress=0
     # Delete all objects matching the given labels
     # --------------------------------------------
     for label in "${labels[@]}"
     do
+        # Progressbar
+        # -----------
+        echo $(( progress * 100 / ${#labels[@]} )) \
+            | dialog --title "Deletion progress" \
+                     --gauge "Please wait, deleting objects…" \
+                     6 60 0
+        progress=$(( progress + 1 ))
+
+        # Cut trailing newlines and spaces
+        # --------------------------------
         label=$(echo "$label" | awk '{$1=$1;print}')
+
+        # Delete all possible types of objects with a label
+        # -------------------------------------------------
         for type in cert data privkey pubkey secrkey
         do
            pkcs11-tool --delete-object --label="$label" --module="$LIB1" \
@@ -618,6 +635,8 @@ delete_all_objects()
         done
     done
 
+    # All done!
+    # ---------
     dialog --msgbox "Operation completed successfully!" \
            0 0
     return 0
