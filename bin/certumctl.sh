@@ -616,8 +616,11 @@ generate_keypair()
                    --label "$label" --pin "$pin" 2>&1 | grep 'CKR_DEVICE_MEMORY'
     then
         err "Card memory full! Please delete something from a slot to free up memory!"
+        dialog --msgbox "Card memory full! Please delete something from a slot to free up memory!" \
+               0 0
+        return 0
     else
-        return
+        return 0
     fi
 }
 
