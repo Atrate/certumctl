@@ -529,8 +529,8 @@ main_menu()
                        2 "Generate keypair" \
                        3 "Log into the card" \
                        4 "List available mechanisms" \
-                       5 "Nothing" \
-                       6 "Nothing" \
+                       5 "List keys on the card" \
+                       6 "Show public key" \
                        7 "Nothing" \
                        8 "Nothing" \
                        4>&1 1>&2 2>&4 \
@@ -636,6 +636,36 @@ list_key_types()
     return
 }
 
+# List actual keys stored on the card
+# -----------------------------------
+list_card_keys()
+{
+    local pin=$(get_pin)
+    dialog --title "Keys on card" \
+	   --msgbox "$(pkcs11-tool --module "$LIB1" --list-objects --pin "$pin")"
+
+    return
+}
+
+# Get specific key
+# ----------------
+get_pubkey()
+{
+    # Get PIN and key to show
+    # -----------------------
+    local pin=$(get_pin)
+    local label=$(dialog --title "Key label" \
+	    	         --inputbox "Provide key name:" \
+			 0 0)
+
+    # Display key value
+    # -----------------
+    dialog --title "Key value" \
+	   --msgbox "$(pkcs11-tool --module "$LIB1" --read-object --type pubkey --label "$label")"
+
+    return
+}
+
 
 # Main program functionality
 # --------------------------
@@ -719,10 +749,10 @@ main()
                 list_key_types
                 ;;
             5)
-                true
+                list_card_keys
                 ;;
             6)
-                true
+                get_pubkey
                 ;;
             7)
                 true
