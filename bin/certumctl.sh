@@ -725,7 +725,10 @@ list_key_types()
 # -----------------------------------
 list_card_keys()
 {
-    local pin=$(get_pin)
+    if ! pin=$(get_pin) then
+	return 0
+    fi
+
     dialog --title "Keys on card" \
            --msgbox "$(pkcs11-tool --module "$LIB1" --list-objects --pin "$pin")" \
 	   0 0 \
@@ -741,9 +744,11 @@ get_pubkey()
     # Get PIN and key to show
     # -----------------------
     local pin=$(get_pin)
-    local label=$(dialog --title "Key label" \
+    local label=$(dialog --stdout \
+	                 --title "Key label" \
                          --inputbox "Provide key name:" \
-                         0 0)
+                         0 0 \
+		 || return 1)
 
     # Display key value
     # -----------------
