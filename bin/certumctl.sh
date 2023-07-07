@@ -18,21 +18,20 @@
 # ---------------------------------------------------------------------
 
 # --------------
-# Version: 0.0.1
+# Version: 1.0.0
 # --------------
 
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # This is a 'simple' bash and dialog-based script to help you deal with Certum
-# smartcards without having to pull your remaining hair out. So far the
-# following OSes are supported:
-#   Debian 12
+# smartcards without having to pull your remaining hair out. Refer to the README
+# for the supported OSes.
 # --------------------
 # Exit code listing:
 #   0: All good
 #   1: Unspecified
 #   2: Error in environment configuration or arguments
 #   3: Runtime requirements not satisfied
-# ----------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 
 ## -----------------------------------------------------
 ## SECURITY SECTION
@@ -69,6 +68,7 @@ export IFS
 UTILS=(
     '['
     '[['
+    'awk'
     'cat'
     'command'
     'declare'
@@ -123,8 +123,7 @@ set -o pipefail -eEur
 
 # Globals
 # -------
-DEBUG="true"
-# CCTLDIR="$HOME/.local/share/certumctl"
+DEBUG=${DEBUG:-"false"}
 SCRIPTDIR=$(dirname "$(readlink -e -- "$0")")
 LIB1="$SCRIPTDIR/../lib/sc30pkcs11-3.0.6.68-MS.so"
 LIB2="$SCRIPTDIR/../lib/cryptoCertum3PKCS-3.0.6.65-MS.so"
@@ -397,14 +396,6 @@ check_environment()
     fi
     done
 
-    # # Make config dir
-    # # ---------------
-    # if ! mkdir -p "$CCTLDIR"
-    # then
-        # err "Error making directory: $CCTLDIR, cannot proceed!"
-        # return 2
-    # fi
-
     return 0
 }
 
@@ -526,13 +517,11 @@ main_menu()
                        --menu "What would you like to do today?" \
                        0 0 0 \
                        1 "Show slots" \
-                       2 "Generate keypair" \
-                       3 "Log into the card" \
-                       4 "List available mechanisms" \
-                       5 "List keys on the card" \
-                       6 "Show public key" \
-                       7 "Nothing" \
-                       8 "Nothing" \
+                       2 "List available mechanisms" \
+                       3 "Generate keypair" \
+		       4 "List keys on card" \
+		       5 "Get public key from card" \
+                       0 "Delete ALL objects from card" \
                        4>&1 1>&2 2>&4 \
                 || true)
 
@@ -541,6 +530,7 @@ main_menu()
     echo "$selection"
     return 0
 }
+
 
 # Get PIN from user
 # -----------------
@@ -555,14 +545,19 @@ get_pin()
     echo "$password"
 }
 
+
 # List available slots
 # --------------------
 list_slots()
 {
-    pkcs11-tool --module "$LIB1" --list-slots
+    dialog --title "Slots" \
+           --msgbox "$(pkcs11-tool --module "$LIB1" --list-slots)" \
+           0 0 \
+    || true
+
+    return
 }
 
-# 
 
 # Unlock User PIN for current session
 # -----------------------------------
@@ -576,7 +571,78 @@ card_login()
         return 0
     fi
     pkcs11-tool --module "$LIB1" --unlock-pin --pin "$pin"
+
+    dialog --msgbox "Operation completed successfully!" \
+           0 0
 }
+
+
+# Delete all keys and other objects from card
+# -------------------------------------------
+delete_all_objects()
+{
+    # PlEasE tYpE "IAMsuReWhatIAMdoIng" to COnfIrm
+    # --------------------------------------------
+    dialog --no-label "No" \
+           --yes-label "Yes" \
+           --default-button "no" \
+           --yesno "Are you sure you want to continue? This will delete ALL objects (keys, certificates) on the card" \
+           0 0 \
+    || return 0
+
+
+    local pin
+    # Exit to main menu if pin was not provided
+    # -----------------------------------------
+    if ! pin=$(get_pin)
+    then
+        return 0
+    fi
+
+    # Read labels of all objects to be deleted
+    # ----------------------------------------
+    declare -a labels
+    readarray -t labels < <(pkcs11-tool --module "$LIB1" --list-objects \
+                            --pin "$pin" \
+                            | grep -E '^\s+label:\s+.+$' \
+                            | awk '{for(i=2;i<=NF;++i)printf $i""FS ; print ""}')
+
+
+    local progress
+    progress=0
+    # Delete all objects matching the given labels
+    # --------------------------------------------
+    for label in "${labels[@]}"
+    do
+        # Progressbar
+        # -----------
+        echo $(( progress * 100 / ${#labels[@]} )) \
+            | dialog --title "Deletion progress" \
+                     --gauge "Please wait, deleting objects…" \
+                     6 60 0
+        progress=$(( progress + 1 ))
+
+        # Cut trailing newlines and spaces
+        # --------------------------------
+        label=$(echo "$label" | awk '{$1=$1;print}')
+
+        # Delete all possible types of objects with a label
+        # -------------------------------------------------
+        for type in cert data privkey pubkey secrkey
+        do
+           pkcs11-tool --delete-object --label="$label" --module="$LIB1" \
+                       --pin="$pin" --type="$type" >&3 2>&3 \
+           || true
+        done
+    done
+
+    # All done!
+    # ---------
+    dialog --msgbox "Operation completed successfully!" \
+           0 0
+    return 0
+}
+
 
 # Generate keypair
 # ----------------
@@ -619,10 +685,29 @@ generate_keypair()
 
     # Unlock card, perform keypair generation
     # ---------------------------------------
-
-    pkcs11-tool --module "$LIB1" --keypair --key-type "$key_type" \
-                --label "$label" --pin "$pin"
+    local output
+    if ! output="$(pkcs11-tool --module "$LIB1" --keypair --key-type "$key_type" \
+                 --label "$label" --pin "$pin" 2>&1)"
+    then
+        # Handle "out of space" errors
+        # ----------------------------
+        if echo "$output" | grep 'CKR_DEVICE_MEMORY'
+        then
+            err "Card memory full! Please delete something from a slot to free up memory!"
+            dialog --msgbox "Card memory full! Please delete something from a slot to free up memory!" \
+                   0 0
+        else
+            err "Unexpected error occured: $output"
+            dialog --msgbox "Unexpected error occured: $output" \
+                   0 0
+        fi
+    else
+        dialog --msgbox "Operation completed successfully!" \
+               0 0
+    fi
+    return 0
 }
+
 
 # List key types avaiable for current token
 # -----------------------------------------
@@ -642,7 +727,7 @@ list_card_keys()
 {
     local pin=$(get_pin)
     dialog --title "Keys on card" \
-	   --msgbox "$(pkcs11-tool --module "$LIB1" --list-objects --pin "$pin")"
+           --msgbox "$(pkcs11-tool --module "$LIB1" --list-objects --pin "$pin")"
 
     return
 }
@@ -655,13 +740,13 @@ get_pubkey()
     # -----------------------
     local pin=$(get_pin)
     local label=$(dialog --title "Key label" \
-	    	         --inputbox "Provide key name:" \
-			 0 0)
+                         --inputbox "Provide key name:" \
+                         0 0)
 
     # Display key value
     # -----------------
     dialog --title "Key value" \
-	   --msgbox "$(pkcs11-tool --module "$LIB1" --read-object --type pubkey --label "$label")"
+           --msgbox "$(pkcs11-tool --module "$LIB1" --read-object --type pubkey --label "$label")"
 
     return
 }
@@ -740,25 +825,19 @@ main()
                 list_slots
                 ;;
             2)
-                generate_keypair
-                ;;
-            3)
-                card_login
-                ;;
-            4)
                 list_key_types
                 ;;
-            5)
-                list_card_keys
+            3)
+                generate_keypair
                 ;;
-            6)
-                get_pubkey
-                ;;
-            7)
-                true
-                ;;
-            8)
-                true
+	    4)
+		list_card_keys
+		;;
+	    5)
+		get_pubkey
+		;;
+            0)
+                delete_all_objects
                 ;;
             *)
                 exit 0

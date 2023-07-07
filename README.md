@@ -12,9 +12,13 @@ following OSes are supported:
 - Ubuntu 22.10
 - Ubuntu 22.04
 
-## Screenshots
+## Features
 
-TODO
+- Automatic installation of required libraries on supported OSes
+- Automatic starting of required services on supported OSes
+- Listing available slots on a card
+- Listing key types available for a card
+- Generating a keypair and storing it on a card
 
 ## Installation and usage
 
@@ -28,11 +32,26 @@ TODO
 - `readlink`
 - Certum's smartcard libraries (included in `./lib`)
 
-## [Changelog](./CHANGELOG)
+## [Changelog](./CHANGELOG.md)
+
+## Screenshots
+
+![Main menu](img/image2.png)
+
+![Listing of slots](img/image1.png)
+
+![Listing of available key types](img/image3.png)
+
+![Generating keys](img/image4.png)
+
+![Entering PIN for operations](img/image5.png)
+
+![Starting smartcard utils](img/image0.png)
 
 ## Source for libraries
 
 [https://pomoc.certum.pl/pl/oprogramowanie/procertum-cardmanager/](https://pomoc.certum.pl/pl/oprogramowanie/procertum-cardmanager/)
 
 ## License
+
 This project, except the proprietary Certum libraries, is licensed under the [GNU AGPL-3.0-or-later](https://www.gnu.org/licenses/agpl-3.0.html).
