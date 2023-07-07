@@ -725,7 +725,8 @@ list_key_types()
 # -----------------------------------
 list_card_keys()
 {
-    if ! pin=$(get_pin) then
+    if ! pin=$(get_pin)
+    then
 	return 0
     fi
 
@@ -743,7 +744,11 @@ get_pubkey()
 {
     # Get PIN and key to show
     # -----------------------
-    local pin=$(get_pin)
+    if ! pin=$(get_pin)
+    then
+	return 0
+    fi
+
     local label=$(dialog --stdout \
 	                 --title "Key label" \
                          --inputbox "Provide key name:" \
