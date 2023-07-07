@@ -727,7 +727,9 @@ list_card_keys()
 {
     local pin=$(get_pin)
     dialog --title "Keys on card" \
-           --msgbox "$(pkcs11-tool --module "$LIB1" --list-objects --pin "$pin")"
+           --msgbox "$(pkcs11-tool --module "$LIB1" --list-objects --pin "$pin")" \
+	   0 0 \
+    || true
 
     return
 }
@@ -746,7 +748,9 @@ get_pubkey()
     # Display key value
     # -----------------
     dialog --title "Key value" \
-           --msgbox "$(pkcs11-tool --module "$LIB1" --read-object --type pubkey --label "$label")"
+           --msgbox "$(pkcs11-tool --module "$LIB1" --read-object --type pubkey --label "$label")" \
+	   0 0 \
+    || true
 
     return
 }
