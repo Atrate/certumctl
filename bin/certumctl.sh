@@ -749,16 +749,25 @@ get_pubkey()
 	return 0
     fi
 
-    local label=$(dialog --stdout \
-	                 --title "Key label" \
-                         --inputbox "Provide key name:" \
-                         0 0 \
-		 || return 1)
+    label=$(dialog --stdout \
+	           --title "Key label" \
+                   --inputbox "Provide key name:" \
+                   0 0 \
+            || return 1)
+
+    # Get output filename to save key to
+    # ----------------------------------
+    path=$(dialog --stdout \
+	          --title "Output file" \
+		  --inputbox "Where to save file?" \
+		  0 0 \
+           || return 1)
+
 
     # Display key value
     # -----------------
     dialog --title "Key value" \
-           --msgbox "$(pkcs11-tool --module "$LIB1" --read-object --type pubkey --label "$label")" \
+           --msgbox "$(pkcs11-tool --module "$LIB1" --read-object --type pubkey --label "$label" -o "$path")" \
 	   0 0 \
     || true
 
