@@ -519,8 +519,8 @@ main_menu()
                        1 "Show slots" \
                        2 "List available mechanisms" \
                        3 "Generate keypair" \
-		                   4 "List keys on card" \
-		                   5 "Get public key from card" \
+                           4 "List keys on card" \
+                           5 "Get public key from card" \
                        0 "Delete ALL objects from card" \
                        4>&1 1>&2 2>&4 \
                 || true)
@@ -727,12 +727,13 @@ list_card_keys()
 {
     if ! pin=$(get_pin)
     then
-	return 0
+    return 0
     fi
 
     dialog --title "Keys on card" \
-           --msgbox "$(pkcs11-tool --module "$LIB1" --list-objects --pin "$pin")" \
-	   0 0 \
+           --msgbox "$(pkcs11-tool --module "$LIB1" \
+           --list-objects --pin "$pin")" \
+       0 0 \
     || true
 
     return
@@ -746,11 +747,11 @@ get_pubkey()
     # -----------------------
     if ! pin=$(get_pin)
     then
-	return 0
+    return 0
     fi
 
     label=$(dialog --stdout \
-	           --title "Key label" \
+                   --title "Key label" \
                    --inputbox "Provide key name:" \
                    0 0 \
             || return 1)
@@ -758,17 +759,18 @@ get_pubkey()
     # Get output filename to save key to
     # ----------------------------------
     path=$(dialog --stdout \
-	          --title "Output file" \
-		  --inputbox "Where to save file?" \
-		  0 0 \
+                  --title "Output file" \
+                  --inputbox "Where to save file?" \
+                  0 0 \
            || return 1)
 
 
     # Display key value
     # -----------------
     dialog --title "Key value" \
-           --msgbox "$(pkcs11-tool --module "$LIB1" --read-object --type pubkey --label "$label" -o "$path")" \
-	   0 0 \
+           --msgbox "$(pkcs11-tool --module "$LIB1" --read-object \
+           --type pubkey --label "$label" -o "$path")" \
+           0 0 \
     || true
 
     return
