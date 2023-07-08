@@ -519,8 +519,8 @@ main_menu()
                        1 "Show slots" \
                        2 "List available mechanisms" \
                        3 "Generate keypair" \
-		       4 "List keys on card" \
-		       5 "Get public key from card" \
+		                   4 "List keys on card" \
+		                   5 "Get public key from card" \
                        0 "Delete ALL objects from card" \
                        4>&1 1>&2 2>&4 \
                 || true)
@@ -853,12 +853,12 @@ main()
             3)
                 generate_keypair
                 ;;
-	    4)
-		list_card_keys
-		;;
-	    5)
-		get_pubkey
-		;;
+            4)
+                list_card_keys
+                ;;
+            5)
+                get_pubkey
+                ;;
             0)
                 delete_all_objects
                 ;;
