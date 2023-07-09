@@ -44,6 +44,10 @@ following OSes are supported:
 
 ![Generating keys](img/image4.png)
 
+![Encrypting files](img/image6.png)
+
+![Deleting all objects](img/image7.png)
+
 ![Entering PIN for operations](img/image5.png)
 
 ![Starting smartcard utils](img/image0.png)
