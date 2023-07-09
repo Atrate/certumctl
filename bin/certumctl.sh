@@ -214,8 +214,9 @@ declare_debian_12()
     SMARTCARD_SERVICE="pcscd.service"
     TOOLS=(
         'libacsccid1'
-        'opensc'
         'libengine-pkcs11-openssl'
+        'opensc'
+        'openssl'
         'pcsc-tools'
     )
     INSTALL_CMD='sudo apt install -y'
@@ -521,6 +522,8 @@ main_menu()
                        3 "Generate keypair" \
                        4 "List keys on card" \
                        5 "Get public key from card" \
+                       6 "Encrypt a file" \
+                       7 "Decrypt a file" \
                        0 "Delete ALL objects from card" \
                        4>&1 1>&2 2>&4 \
                 || true)
@@ -644,6 +647,167 @@ delete_all_objects()
 }
 
 
+# Encrypt a file using a stored RSA public key
+# --------------------------------------------
+encrypt_file()
+{
+    # Define dialog fields
+    # --------------------
+    local fields=(
+        "Key label" 1 1 "" 1 30 40 0
+        "Input file" 2 1 "" 2 30 40 0
+        "Output file" 3 1 "" 3 30 40 0
+    )
+
+    # Display dialog
+    # --------------
+    exec 4>&1
+    params=$(dialog --title "Encrypt file" \
+                    --form "Arguments" \
+                    12 64 0 \
+                    "${fields[@]}" \
+                    2>&1 1>&4 || true)
+    exec 4>&-
+
+    # Get parameters from dialog result, exit to main menu on empty
+    # -------------------------------------------------------------
+    if ! { read -r label && read -r inpath && read -r outpath; } <<< "${params}"
+    then
+        err "Arguments must be non-empty!"
+        dialog --msgbox "Arguments must be non-empty!" \
+               0 0
+        return 0
+    fi
+
+    if [ ! -r "$inpath" ]
+    then
+        err "Invalid input file path or permission denied!"
+        dialog --msgbox "Invalid input file path or permission denied!" \
+               0 0
+        return 0
+    fi
+
+    local pin
+    # Exit to main menu if pin was not provided
+    # -----------------------------------------
+    if ! pin=$(get_pin)
+    then
+        return 0
+    fi
+
+    # Display please wait dialog
+    # --------------------------
+    dialog --title "Please wait" \
+           --infobox "Please wait, encryption in progress…" 0 0 \
+    || true
+
+    # Perform decryption
+    # ------------------
+    local output
+    if ! output="$(openssl pkeyutl -encrypt -pubin \
+                                   -inkey <(pkcs11-tool --module "$LIB1"\
+                                                        --read-object \
+                                                        --type pubkey \
+                                                        --label "$label" \
+                                                        --pin "$pin") \
+                                   -in "$inpath" \
+                                   -pkeyopt rsa_padding_mode:oaep \
+                                   -pkeyopt rsa_oaep_md:sha512 \
+                                   -pkeyopt rsa_mgf1_md:sha512 \
+                                   -out "$outpath")"
+    then
+        err "Unexpected error occured: $output"
+        dialog --msgbox "Unexpected error occured: $output" \
+               0 0
+    else
+        dialog --msgbox "Operation completed successfully! Resulting file: $outpath" \
+               0 0
+    fi
+
+
+    return 0
+}
+
+
+# Decrypt a file using a stored RSA private key
+# ---------------------------------------------
+decrypt_file()
+{
+    # Define dialog fields
+    # --------------------
+    local fields=(
+        "Key label" 1 1 "" 1 30 40 0
+        "Input file" 2 1 "" 2 30 40 0
+        "Output file" 3 1 "" 3 30 40 0
+    )
+
+    # Display dialog
+    # --------------
+    exec 4>&1
+    params=$(dialog --title "Decrypt file" \
+                    --form "Arguments" \
+                    12 64 0 \
+                    "${fields[@]}" \
+                    2>&1 1>&4 || true)
+    exec 4>&-
+
+    # Get parameters from dialog result, exit to main menu on empty
+    # -------------------------------------------------------------
+    if ! { read -r label && read -r inpath && read -r outpath; } <<< "${params}"
+    then
+        err "Arguments must be non-empty!"
+        dialog --msgbox "Arguments must be non-empty!" \
+               0 0
+        return 0
+    fi
+
+    if [ ! -r "$inpath" ]
+    then
+        err "Invalid input file path or permission denied!"
+        dialog --msgbox "Invalid input file path or permission denied!" \
+               0 0
+        return 0
+    fi
+
+
+    local pin
+    # Exit to main menu if pin was not provided
+    # -----------------------------------------
+    if ! pin=$(get_pin)
+    then
+        return 0
+    fi
+
+    # Display please wait dialog
+    # --------------------------
+    dialog --title "Please wait" \
+           --infobox "Please wait, decryption in progress…" 0 0 \
+    || true
+
+    # Perform decryption
+    # ------------------
+    local output
+    if ! output="$(pkcs11-tool --module "$LIB1" \
+                               --decrypt \
+                               --mechanism RSA-PKCS-OAEP \
+                               --input-file "$inpath" \
+                               --label "$label" \
+                               --hash-algorithm SHA512 \
+                               --pin "$pin" \
+                               -o "$outpath" 2>&1)"
+    then
+        err "Unexpected error occured: $output"
+        dialog --msgbox "Unexpected error occured: $output" \
+               0 0
+    else
+        dialog --msgbox "Operation completed successfully! Resulting file: $outpath" \
+               0 0
+    fi
+
+    return 0
+}
+
+
 # Generate keypair
 # ----------------
 generate_keypair()
@@ -682,6 +846,12 @@ generate_keypair()
     then
         return 0
     fi
+
+    # Display please wait dialog
+    # --------------------------
+    dialog --title "Please wait" \
+           --infobox "Please wait, key generation in progress…" 0 0 \
+    || true
 
     # Unlock card, perform keypair generation
     # ---------------------------------------
@@ -745,16 +915,18 @@ get_pubkey()
 {
     # Get PIN and key to show
     # -----------------------
+    local pin
     if ! pin=$(get_pin)
     then
-    return 0
+        return 0
     fi
 
+    local label
     label=$(dialog --stdout \
                    --title "Key label" \
                    --inputbox "Provide key name:" \
                    0 0 \
-            || return 1)
+            || return 0)
 
     # Get output filename to save key to
     # ----------------------------------
@@ -762,18 +934,33 @@ get_pubkey()
                   --title "Output file" \
                   --inputbox "Where to save file?" \
                   0 0 \
-           || return 1)
+           || return 0)
 
+    # Check parameters
+    # ----------------
+    if [ -z "$path" ] || [ -z "$label" ]
+    then
+        err "Please provide a label and path!"
+        dialog --msgbox "Please provide a label and path!" \
+               0 0
+        return 0
+    fi
 
-    # Display key value
-    # -----------------
-    dialog --title "Key value" \
-           --msgbox "$(pkcs11-tool --module "$LIB1" --read-object \
-           --type pubkey --label "$label" -o "$path")" \
-           0 0 \
-    || true
+    # Save key to file
+    # ----------------
+    local result
+    if ! result="$(pkcs11-tool --module "$LIB1" --read-object \
+                               --type pubkey --label "$label" -o "$path")"
+    then
+        err "Unexpected error occured: $result"
+        dialog --msgbox "Unexpected error occured: $result" \
+               0 0
+    else
+        dialog --msgbox "Operation completed successfully! Key saved to: $path" \
+               0 0
+    fi
 
-    return
+    return 0
 }
 
 
@@ -860,6 +1047,12 @@ main()
                 ;;
             5)
                 get_pubkey
+                ;;
+            6)
+                encrypt_file
+                ;;
+            7)
+                decrypt_file
                 ;;
             0)
                 delete_all_objects
