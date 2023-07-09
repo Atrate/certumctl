@@ -930,7 +930,7 @@ get_pubkey()
 
     # Get output filename to save key to
     # ----------------------------------
-    path=$(dialog --stdout \
+    outpath=$(dialog --stdout \
                   --title "Output file" \
                   --inputbox "Where to save file?" \
                   0 0 \
@@ -938,7 +938,7 @@ get_pubkey()
 
     # Check parameters
     # ----------------
-    if [ -z "$path" ] || [ -z "$label" ]
+    if [ -z "$outpath" ] || [ -z "$label" ]
     then
         err "Please provide a label and path!"
         dialog --msgbox "Please provide a label and path!" \
@@ -950,13 +950,13 @@ get_pubkey()
     # ----------------
     local result
     if ! result="$(pkcs11-tool --module "$LIB1" --read-object \
-                               --type pubkey --label "$label" -o "$path")"
+                               --type pubkey --label "$label" -o "$outpath")"
     then
         err "Unexpected error occured: $result"
         dialog --msgbox "Unexpected error occured: $result" \
                0 0
     else
-        dialog --msgbox "Operation completed successfully! Key saved to: $path" \
+        dialog --msgbox "Operation completed successfully! Key saved to: $outpath. The key was saved in a binary format (ASN1) that can be read with the \`dumpasn1\` utility." \
                0 0
     fi
 
