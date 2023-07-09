@@ -32,11 +32,13 @@ following OSes are supported:
 - `readlink`
 - Certum's smartcard libraries (included in `./lib`)
 
+Other dependencies can be dynamically installed by the script.
+
 ## [Changelog](./CHANGELOG.md)
 
 ## Screenshots
 
-![Main menu](img/image2.png)
+![Main menu](img/image8.png)
 
 ![Listing of slots](img/image1.png)
 
